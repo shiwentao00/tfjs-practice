@@ -19,7 +19,9 @@ function createModel() {
     const model = tf.sequential();
 
     // Add a single input layer
-    model.add(tf.layers.dense({ inputShape: [1], units: 2, useBias: true }));
+    model.add(tf.layers.dense({ inputShape: [1], units: 4, useBias: true, activation: "relu" }));
+
+    model.add(tf.layers.dense({ units: 4, useBias: true, activation: "relu" }));
 
     // Add an output layer
     model.add(tf.layers.dense({ units: 1, useBias: true }));
@@ -78,7 +80,7 @@ async function trainModel(model, inputs, labels) {
     });
 
     const batchSize = 32;
-    const epochs = 50;
+    const epochs = 100;
 
     return await model.fit(inputs, labels, {
         batchSize,
@@ -92,8 +94,11 @@ async function trainModel(model, inputs, labels) {
     });
 }
 
-function testModel(model, inputData, normalizationData) {
-    const { inputMax, inputMin, labelMin, labelMax } = normalizationData;
+let testModel = null;
+let testInputData = null;
+let testNormalizationData = null;
+function test() {
+    const { inputMax, inputMin, labelMin, labelMax } = testNormalizationData;
 
     // Generate predictions for a uniform range of numbers between 0 and 1;
     // We un-normalize the data by doing the inverse of the min-max scaling 
@@ -101,7 +106,7 @@ function testModel(model, inputData, normalizationData) {
     const [xs, preds] = tf.tidy(() => {
 
         const xs = tf.linspace(0, 1, 100);
-        const preds = model.predict(xs.reshape([100, 1]));
+        const preds = testModel.predict(xs.reshape([100, 1]));
 
         // un-normalize input
         const unNormXs = xs
@@ -122,7 +127,7 @@ function testModel(model, inputData, normalizationData) {
         return { x: val, y: preds[i] }
     });
 
-    const originalPoints = inputData.map(d => ({
+    const originalPoints = testInputData.map(d => ({
         x: d.horsepower, y: d.mpg,
     }));
 
@@ -167,11 +172,14 @@ async function train() {
     await trainModel(model, inputs, labels);
     alert('Done Training');
 
-    testModel(model, data, tensorData);
+    // set the references for testing
+    testModel = model;
+    testInputData = data;
+    testNormalizationData = tensorData;
 }
 
 const trainButton = document.querySelector('#trainButton');
 trainButton.addEventListener('click', train);
 
-// const testButton = document.querySelector('#testButton');
-// testButton.addEventListener('click', testModel)
+const testButton = document.querySelector('#testButton');
+testButton.addEventListener('click', test)
